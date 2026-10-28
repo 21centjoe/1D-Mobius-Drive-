@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanced Ternary 1D Möbius Video Drive Engine</title>
+    <!-- Tailwind CSS for UI Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600;700&family=Orbitron:wght@400;600;800;900&display=swap');
+
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: #030712;
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon Glow Effects */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.7), 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .glow-purple {
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+
+        .border-glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+            border-color: rgba(6, 182, 212, 0.6);
+        }
+
+        .border-glow-purple {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+            border-color: rgba(168, 85, 247, 0.6);
+        }
+
+        /* Custom Scrollbar for Terminals */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+
+        /* Scanline Overlay Effect */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        /* Grid Background Pattern */
+        .cyber-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen cyber-grid flex flex-col justify-between select-none">
+
+    <!-- TOP NAV / STATUS BAR -->
+    <header class="border-b border-cyan-900/60 bg-gray-950/80 backdrop-blur-md px-6 py-3 flex flex-wrap justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-cyan-950/60 border border-cyan-500/50 rounded-lg text-cyan-400">
+                <i data-lucide="infinity" class="w-6 h-6 animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="font-orbitron font-extrabold text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-500">
+                    MÖBIUS-3 // VIDEO DRIVE
+                </h1>
+                <p class="text-xs text-gray-400 tracking-widest">BALANCED TERNARY TOPOLOGICAL OVERLAY ENGINE</p>
+            </div>
+        </div>
+
+        <!-- Top Right Live Status Meters -->
+        <div class="flex items-center gap-6 text-xs font-mono mt-2 sm:mt-0">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="text-gray-400">TOPOLOGY:</span>
+                <span class="text-cyan-400 font-bold">1D MÖBIUS LOOP</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400">RADIX:</span>
+                <span class="text-purple-400 font-bold">3 (BALANCED: -, 0, +)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400">CLK:</span>
+                <span id="fpsCounter" class="text-yellow-400 font-bold">60 FPS</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE CONTAINING VIDEO PLAYER & OVERLAY -->
+    <main class="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1920px] mx-auto w-full">
+        
+        <!-- LEFT/CENTER PANEL: VIDEO PLAYER WITH CYBERNETIC HUD OVERLAY -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- VIDEO & CANVAS CONTAINER (STOCKED OVERLAY SYSTEM) -->
+            <div class="relative w-full aspect-video bg-black rounded-xl border border-cyan-900/50 overflow-hidden shadow-2xl group border-glow-cyan">
+                
+                <!-- 1. Background Video Layer -->
+                <video id="videoElement" class="w-full h-full object-cover" loop muted playsinline>
+                    <!-- Fallback public video stream -->
+                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+
+                <!-- Scanlines Layer -->
+                <div class="absolute inset-0 scanlines opacity-60"></div>
+
+                <!-- 2. Interactive Overlay Layer: HUD Canvas -->
+                <canvas id="hudCanvas" class="absolute inset-0 w-full h-full z-10 cursor-crosshair"></canvas>
+
+                <!-- 3. Corner Framing HUD Graphics -->
+                <div class="absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1">
+                    <div class="text-[10px] text-cyan-400/80 tracking-widest font-orbitron flex items-center gap-2">
+                        <span class="w-2 h-2 bg-cyan-400 rounded-sm"></span> SYS.READ_VECTOR
+                    </div>
+                    <div id="vectorDisplay" class="text-xs font-bold text-cyan-300 font-mono">FORWARD [+1.0x]</div>
+                </div>
+
+                <div class="absolute top-4 right-4 z-20 pointer-events-none text-right">
+                    <div class="text-[10px] text-purple-400/80 tracking-widest font-orbitron">MÖBIUS BOUNDARY TWIST</div>
+                    <div id="twistStatus" class="text-xs font-bold text-purple-300 font-mono">INVERSION NODE: ACTIVE</div>
+                </div>
+
+                <div class="absolute bottom-4 left-4 z-20 pointer-events-none flex items-center gap-3">
+                    <div class="px-2 py-1 rounded bg-black/60 border border-cyan-500/40 text-[11px] text-cyan-300 backdrop-blur-md">
+                        POS: <span id="loopPosText" class="text-white">0.00π</span>
+                    </div>
+                    <div class="px-2 py-1 rounded bg-black/60 border border-purple-500/40 text-[11px] text-purple-300 backdrop-blur-md">
+                        PHASE: <span id="currentPhaseText" class="text-emerald-400">+1 (POSITIVE)</span>
+                    </div>
+                </div>
+
+                <!-- Floating Canvas Interactive Hint -->
+                <div class="absolute bottom-4 right-4 z-20 pointer-events-none text-[10px] text-gray-400 bg-black/60 px-2 py-1 rounded border border-gray-800 backdrop-blur-md">
+                    [CLICK / DRAG CANAL TO PERTURB MÖBIUS WAVE]
+                </div>
+            </div>
+
+            <!-- PRIMARY CONTROL PANEL -->
+            <div class="bg-gray-950/80 border border-cyan-900/40 rounded-xl p-4 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
+                
+                <!-- Playback / Vector Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="btnPlayPause" class="px-4 py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg flex items-center gap-2 text-xs font-bold tracking-wider transition-all active:scale-95">
+                        <i data-lucide="play" class="w-4 h-4"></i> PLAY ENGINE
+                    </button>
+                    
+                    <button id="btnReverse" class="px-3 py-2 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95" title="Reverse Traversal Direction">
+                        <i data-lucide="repeat-1" class="w-4 h-4"></i> INVERT VECTOR
+                    </button>
+
+                    <button id="btnPhaseShift" class="px-3 py-2 bg-pink-950/50 hover:bg-pink-900/70 border border-pink-500/40 text-pink-300 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95" title="Force Phase Shift Trigger">
+                        <i data-lucide="zap" class="w-4 h-4"></i> TRIGGER TWIST
+                    </button>
+                </div>
+
+                <!-- Packet Injection Controls -->
+                <div class="flex items-center gap-2 border-l border-gray-800 pl-4">
+                    <span class="text-xs text-gray-400 mr-1 hidden sm:inline">INJECT TERNARY:</span>
+                    <button id="btnInjectPos" class="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-mono font-bold rounded">
+                        +1
+                    </button>
+                    <button id="btnInjectZero" class="px-2.5 py-1 bg-gray-900 hover:bg-gray-800 border border-gray-600 text-gray-300 text-xs font-mono font-bold rounded">
+                        0
+                    </button>
+                    <button id="btnInjectNeg" class="px-2.5 py-1 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 text-xs font-mono font-bold rounded">
+                        -1
+                    </button>
+                </div>
+
+                <!-- HUD Visibility Toggle -->
+                <div class="flex items-center gap-2">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggleHUD" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        <span class="ml-2 text-xs text-gray-300 font-mono">HUD OVERLAY</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- PARAMETER SLIDERS CONTROL PANEL -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-950/60 border border-cyan-900/30 rounded-xl p-4">
+                <div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>TRAVERSAL SPEED</span>
+                        <span id="speedVal" class="text-cyan-400 font-mono">1.0x</span>
+                    </div>
+                    <input type="range" id="sliderSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-500 bg-gray-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>POLARITY SENSITIVITY</span>
+                        <span id="sensitivityVal" class="text-purple-400 font-mono">0.85</span>
+                    </div>
+                    <input type="range" id="sliderSensitivity" min="0.1" max="1.5" step="0.05" value="0.85" class="w-full accent-purple-500 bg-gray-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>NOISE THRESHOLD</span>
+                        <span id="noiseVal" class="text-pink-400 font-mono">0.05</span>
+                    </div>
+                    <input type="range" id="sliderNoise" min="0.00" max="0.30" step="0.01" value="0.05" class="w-full accent-pink-500 bg-gray-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT PANEL: BALANCED TERNARY ENGINE MONITOR & METRICS -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- MÖBIUS & BALANCED TERNARY ARCHITECTURE CARD -->
+            <div class="bg-gray-950/80 border border-purple-900/40 rounded-xl p-4 backdrop-blur-md flex flex-col gap-3">
+                <h2 class="text-xs font-orbitron font-bold text-purple-400 tracking-wider flex items-center gap-2 border-b border-purple-900/40 pb-2">
+                    <i data-lucide="cpu" class="w-4 h-4 text-purple-400"></i> BALANCED TERNARY REGISTERS
+                </h2>
+
+                <!-- Live Balanced Ternary Buffer Feed -->
+                <div class="bg-black/80 rounded-lg p-3 border border-purple-900/30">
+                    <div class="text-[10px] text-gray-500 mb-1 flex justify-between">
+                        <span>REGISTER STREAM BUFFER</span>
+                        <span class="text-purple-400">TRIT DEPTH: 16-TRIT</span>
+                    </div>
+                    <div id="ternaryRegister" class="font-mono text-sm tracking-widest text-center py-2 bg-purple-950/20 rounded border border-purple-800/30 text-purple-300 font-bold overflow-x-auto whitespace-nowrap">
+                        +0- +++0 ---+ ++0-
+                    </div>
+                </div>
+
+                <!-- Decimal / Trit Conversion Live Feedback -->
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-800">
+                        <span class="text-[10px] text-gray-500 block">VALUE (DECIMAL)</span>
+                        <span id="decVal" class="text-cyan-400 font-mono font-bold text-sm">+412,905</span>
+                    </div>
+                    <div class="bg-gray-900/60 p-2 rounded border border-gray-800">
+                        <span class="text-[10px] text-gray-500 block">INVERTED (-X)</span>
+                        <span id="decInvVal" class="text-pink-400 font-mono font-bold text-sm">-412,905</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERFORMANCE & TOPOLOGY METRICS -->
+            <div class="bg-gray-950/80 border border-cyan-900/40 rounded-xl p-4 backdrop-blur-md flex flex-col gap-4">
+                <h2 class="text-xs font-orbitron font-bold text-cyan-400 tracking-wider flex items-center gap-2 border-b border-cyan-900/40 pb-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> DRIVE PERFORMANCE METRICS
+                </h2>
+
+                <!-- Metric Bars -->
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <div class="flex justify-between text-gray-400 mb-1 text-[11px]">
+                            <span>PHASE FLIP FREQUENCY</span>
+                            <span id="metricPhaseFlip" class="text-cyan-400 font-mono">120.4 Hz</span>
+                        </div>
+                        <div class="w-full bg-gray-900 h-2 rounded-full overflow-hidden border border-gray-800">
+                            <div id="barPhaseFlip" class="bg-gradient-to-r from-cyan-500 to-teal-400 h-full w-[65%] transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-gray-400 mb-1 text-[11px]">
+                            <span>ADDRESS LOOP CYCLES</span>
+                            <span id="metricCycles" class="text-purple-400 font-mono">1,482 REV</span>
+                        </div>
+                        <div class="w-full bg-gray-900 h-2 rounded-full overflow-hidden border border-gray-800">
+                            <div id="barCycles" class="bg-gradient-to-r from-purple-500 to-pink-500 h-full w-[42%] transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-gray-400 mb-1 text-[11px]">
+                            <span>MEMORY EFFICIENCY (ZERO-NEUTRAL)</span>
+                            <span id="metricEfficiency" class="text-emerald-400 font-mono">98.4%</span>
+                        </div>
+                        <div class="w-full bg-gray-900 h-2 rounded-full overflow-hidden border border-gray-800">
+                            <div id="barEfficiency" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full w-[98%] transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topology State Indicators -->
+                <div class="grid grid-cols-3 gap-2 text-center text-[10px] font-mono pt-2 border-t border-gray-900">
+                    <div id="nodePos" class="p-2 rounded bg-emerald-950/40 border border-emerald-500/40 text-emerald-300">
+                        <div class="font-bold text-xs">+1</div>
+                        POSITIVE
+                    </div>
+                    <div id="nodeZero" class="p-2 rounded bg-gray-900 border border-gray-700 text-gray-400">
+                        <div class="font-bold text-xs">0</div>
+                        INVARIANT
+                    </div>
+                    <div id="nodeNeg" class="p-2 rounded bg-rose-950/40 border border-rose-500/40 text-rose-300">
+                        <div class="font-bold text-xs">-1</div>
+                        INVERTED
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIVE SYSTEM LOG TERMINAL -->
+            <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-4 backdrop-blur-md flex flex-col gap-2 flex-1 min-h-[160px]">
+                <div class="flex justify-between items-center text-[11px] border-b border-gray-900 pb-2">
+                    <span class="text-gray-400 font-orbitron flex items-center gap-1.5">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-cyan-400"></i> TOPOLOGICAL LOGS
+                    </span>
+                    <button id="btnClearLog" class="text-[10px] text-gray-500 hover:text-cyan-400">CLEAR</button>
+                </div>
+                
+                <div id="sysLog" class="font-mono text-[11px] text-gray-400 space-y-1 overflow-y-auto max-h-[180px] pr-1">
+                    <p class="text-cyan-500/80">[SYS_INIT] Möbius 1D drive engine mounted.</p>
+                    <p class="text-purple-400/80">[BALANCED_TERNARY] Digit register array initialized (-1, 0, +1).</p>
+                    <p class="text-emerald-400/80">[TOPOLOGY] Half-twist node synchronized at boundary π.</p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-gray-900 bg-gray-950/80 px-6 py-2 text-[11px] text-gray-500 flex flex-wrap justify-between items-center">
+        <div>1D MÖBIUS STRIP TOPOLOGY // ZERO SIGN-BIT OVERHEAD ARCHITECTURE</div>
+        <div class="font-mono text-cyan-500/70">HARDWARE ACCELERATED SIMULATION</div>
+    </footer>
+
+    <!-- ENGINE INTERACTION AND RENDERING SCRIPT -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // --- GLOBAL ENGINE STATE ---
+        const state = {
+            isPlaying: true,
+            hudVisible: true,
+            traversalSpeed: 1.0,
+            direction: 1, // 1 = Forward, -1 = Reverse
+            sensitivity: 0.85,
+            noiseThreshold: 0.05,
+            
+            // Loop & Dynamics
+            loopAngle: 0, // 0 to 2*PI representing traversal along length
+            cycles: 1482,
+            phaseFlips: 120.4,
+            
+            // Data Pulses in Möbius loop
+            // Position u [0, 2PI], phase (+1, 0, -1), speed, intensity
+            pulses: [],
+            
+            // Ternary Register Buffer (16 trits)
+            tritBuffer: [1, 0, -1, 1, 1, 1, 0, -1, -1, -1, 1, 1, 1, 0, 0, -1],
+            
+            // Mouse Interaction state
+            isDragging: false,
+            perturbation: { x: 0, y: 0, active: false }
+        };
+
+        // --- DOM ELEMENTS ---
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('hudCanvas');
+        const ctx = canvas.getContext('2d');
+        const sysLog = document.getElementById('sysLog');
+
+        // Buttons & Inputs
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnReverse = document.getElementById('btnReverse');
+        const btnPhaseShift = document.getElementById('btnPhaseShift');
+        const toggleHUD = document.getElementById('toggleHUD');
+        const sliderSpeed = document.getElementById('sliderSpeed');
+        const sliderSensitivity = document.getElementById('sliderSensitivity');
+        const sliderNoise = document.getElementById('sliderNoise');
+
+        // Status Displays
+        const vectorDisplay = document.getElementById('vectorDisplay');
+        const loopPosText = document.getElementById('loopPosText');
+        const currentPhaseText = document.getElementById('currentPhaseText');
+        const ternaryRegister = document.getElementById('ternaryRegister');
+        const decVal = document.getElementById('decVal');
+        const decInvVal = document.getElementById('decInvVal');
+
+        // Initialize Data Pulses
+        function initPulses() {
+            state.pulses = [];
+            const count = 24;
+            for (let i = 0; i < count; i++) {
+                state.pulses.push({
+                    u: (i / count) * Math.PI * 2,
+                    phase: Math.random() > 0.5 ? 1 : (Math.random() > 0.5 ? -1 : 0),
+                    speed: 0.005 + Math.random() * 0.005,
+                    life: Math.random()
+                });
+            }
+        }
+        initPulses();
+
+        // Canvas Sizing Setup
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- SYSTEM LOGGING UTILITY ---
+        function logMessage(msg, colorClass = 'text-cyan-400') {
+            const p = document.createElement('p');
+            p.className = colorClass;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            p.innerText = `[${time}] ${msg}`;
+            sysLog.appendChild(p);
+            sysLog.scrollTop = sysLog.scrollHeight;
+        }
+
+        // --- BALANCED TERNARY MATH HELPERS ---
+        // Converts array of trits [-1, 0, 1] to Decimal integer
+        function tritsToDecimal(trits) {
+            let decimal = 0;
+            for (let i = 0; i < trits.length; i++) {
+                const power = trits.length - 1 - i;
+                decimal += trits[i] * Math.pow(3, power);
+            }
+            return decimal;
+        }
+
+        // Formats trit symbol
+        function tritToChar(t) {
+            if (t === 1) return '+';
+            if (t === -1) return '-';
+            return '0';
+        }
+
+        function updateTritDisplay() {
+            const str = state.tritBuffer.map(tritToChar).join('');
+            // Format into 4-trit groups
+            const formatted = str.match(/.{1,4}/g).join(' ');
+            ternaryRegister.innerText = formatted;
+
+            const dec = tritsToDecimal(state.tritBuffer);
+            decVal.innerText = (dec >= 0 ? '+' : '') + dec.toLocaleString();
+            decInvVal.innerText = (-dec >= 0 ? '+' : '') + (-dec).toLocaleString();
+        }
+
+        function shiftTritBuffer(newTrit) {
+            state.tritBuffer.shift();
+            state.tritBuffer.push(newTrit);
+            updateTritDisplay();
+        }
+
+        // --- MÖBIUS 1D GEOMETRY CALCULATIONS ---
+        // Evaluates a 3D point on a Möbius strip given traversal u [0, 2PI] and width v [-1, 1]
+        function getMobiusPoint(u, v, radius, width) {
+            const halfU = u / 2;
+            const R = radius + v * width * Math.cos(halfU);
+            const x = R * Math.cos(u);
+            const y = R * Math.sin(u);
+            const z = v * width * Math.sin(halfU);
+            return { x, y, z };
+        }
+
+        // Simple Isometric 3D Projection to 2D Screen
+        function project3D(x, y, z, centerX, centerY) {
+            const scale = 0.85;
+            // Angle rotations for isometric HUD perspective
+            const rotX = 0.45;
+            const rotY = 0.35;
+
+            // Rotate Y
+            let x1 = x * Math.cos(rotY) + z * Math.sin(rotY);
+            let z1 = -x * Math.sin(rotY) + z * Math.cos(rotY);
+
+            // Rotate X
+            let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+            let z2 = y * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+            return {
+                x: centerX + x1 * scale,
+                y: centerY + y2 * scale,
+                depth: z2
+            };
+        }
+
+        // --- ANIMATION & RENDERING LOOP ---
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let fpsTimer = performance.now();
+
+        function renderEngine() {
+            const now = performance.now();
+            const dt = (now - lastFrameTime) / 1000;
+            lastFrameTime = now;
+
+            // FPS Counter
+            frameCount++;
+            if (now - fpsTimer >= 1000) {
+                document.getElementById('fpsCounter').innerText = `${frameCount} FPS`;
+                frameCount = 0;
+                fpsTimer = now;
+            }
+
+            // Clear Overlay Canvas
+            const width = canvas.getBoundingClientRect().width;
+            const height = canvas.getBoundingClientRect().height;
+            ctx.clearRect(0, 0, width, height);
+
+            if (state.hudVisible) {
+                // Update Loop Traversal Angle
+                if (state.isPlaying) {
+                    const delta = 0.8 * state.traversalSpeed * state.direction * dt;
+                    state.loopAngle += delta;
+
+                    // Cycle count logic
+                    if (state.loopAngle >= Math.PI * 2) {
+                        state.loopAngle -= Math.PI * 2;
+                        state.cycles++;
+                        logMessage(`[CYCLE_COMPLETE] Loop rotation invariant passed. Rev: ${state.cycles}`, 'text-purple-400');
+                    } else if (state.loopAngle < 0) {
+                        state.loopAngle += Math.PI * 2;
+                        state.cycles++;
+                    }
+                }
+
+                // Center coordinates for Möbius rendering
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const radius = Math.min(width, height) * 0.28;
+                const stripWidth = radius * 0.22;
+
+                // --- 1. DRAW CYBERNETIC HUD GRID OVERLAY ---
+                ctx.save();
+                ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+                ctx.lineWidth = 1;
+
+                // Radial target rings
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * 1.45, 0, Math.PI * 2);
+                ctx.arc(centerX, centerY, radius * 0.45, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Crosshair guide lines
+                ctx.beginPath();
+                ctx.moveTo(centerX - radius * 1.6, centerY);
+                ctx.lineTo(centerX + radius * 1.6, centerY);
+                ctx.moveTo(centerX, centerY - radius * 1.3);
+                ctx.lineTo(centerX, centerY + radius * 1.3);
+                ctx.stroke();
+                ctx.restore();
+
+                // --- 2. DRAW TOPOLOGICAL MÖBIUS STRIP WIREFRAME ---
+                const uSteps = 80;
+                const vSteps = 6;
+
+                // Precalculate grid vertices
+                const grid = [];
+                for (let i = 0; i <= uSteps; i++) {
+                    const u = (i / uSteps) * Math.PI * 2;
+                    const row = [];
+                    for (let j = 0; j <= vSteps; j++) {
+                        const v = -1 + (j / vSteps) * 2; // -1 to 1
+                        const p3 = getMobiusPoint(u, v, radius, stripWidth);
+                        const proj = project3D(p3.x, p3.y, p3.z, centerX, centerY);
+                        row.push(proj);
+                    }
+                    grid.push(row);
+                }
+
+                // Render Möbius Ribbon Mesh (Back-to-Front depth sort simulation)
+                ctx.lineWidth = 1;
+                for (let i = 0; i < uSteps; i++) {
+                    const u = (i / uSteps) * Math.PI * 2;
+                    
+                    // Determine if close to topological inversion twist boundary (around PI)
+                    const isTwistRegion = Math.abs(u - Math.PI) < 0.4;
+                    
+                    for (let j = 0; j < vSteps; j++) {
+                        const p1 = grid[i][j];
+                        const p2 = grid[i + 1][j];
+                        const p3 = grid[i + 1][j + 1];
+                        const p4 = grid[i][j + 1];
+
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.lineTo(p3.x, p3.y);
+                        ctx.lineTo(p4.x, p4.y);
+                        ctx.closePath();
+
+                        // Fill color based on boundary phase
+                        if (isTwistRegion) {
+                            ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
+                            ctx.strokeStyle = 'rgba(236, 72, 153, 0.6)';
+                        } else {
+                            ctx.fillStyle = 'rgba(6, 182, 212, 0.04)';
+                            ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+                        }
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+
+                // --- 3. DRAW TRAVELING BALANCED TERNARY DATA PULSES ---
+                state.pulses.forEach((pulse, idx) => {
+                    if (state.isPlaying) {
+                        pulse.u += pulse.speed * state.traversalSpeed * state.direction;
+                        
+                        // Check for topological inversion boundary at u = PI
+                        const prevU = pulse.u - pulse.speed * state.traversalSpeed * state.direction;
+                        if ((prevU < Math.PI && pulse.u >= Math.PI) || (prevU > Math.PI && pulse.u <= Math.PI)) {
+                            // TOPOLOGICAL HALF-TWIST INVERSION TRIGGER!
+                            if (pulse.phase !== 0) {
+                                pulse.phase = -pulse.phase; // Polarity flip (+1 <-> -1)
+                                state.phaseFlips += 0.5;
+                                shiftTritBuffer(pulse.phase);
+                                logMessage(`[PHASE_FLIP] Pulse #${idx} traversed twist. New Trit: ${tritToChar(pulse.phase)}`, 'text-pink-400');
+                            }
+                        }
+
+                        // Wrap u around 2PI
+                        if (pulse.u >= Math.PI * 2) pulse.u -= Math.PI * 2;
+                        if (pulse.u < 0) pulse.u += Math.PI * 2;
+                    }
+
+                    // Render Data Pulse
+                    const centerPoint = getMobiusPoint(pulse.u, 0, radius, stripWidth);
+                    const proj = project3D(centerPoint.x, centerPoint.y, centerPoint.z, centerX, centerY);
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(proj.x, proj.y, pulse.phase === 0 ? 3 : 5, 0, Math.PI * 2);
+
+                    // Pulse Color based on Balanced Ternary Phase (+1, 0, -1)
+                    if (pulse.phase === 1) {
+                        ctx.fillStyle = '#10b981'; // Cyan/Emerald for +1
+                        ctx.shadowColor = '#10b981';
+                    } else if (pulse.phase === -1) {
+                        ctx.fillStyle = '#f43f5e'; // Rose/Pink for -1
+                        ctx.shadowColor = '#f43f5e';
+                    } else {
+                        ctx.fillStyle = '#9ca3af'; // Neutral Gray for 0
+                        ctx.shadowColor = '#9ca3af';
+                    }
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // --- 4. DRAW DRIVE HEAD READ/WRITE POINTER ---
+                const headP3 = getMobiusPoint(state.loopAngle, 0, radius, stripWidth);
+                const headProj = project3D(headP3.x, headP3.y, headP3.z, centerX, centerY);
+
+                ctx.save();
+                ctx.strokeStyle = '#06b6d4';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(headProj.x, headProj.y, 12, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Pulsing outer ring
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
+                ctx.beginPath();
+                ctx.arc(headProj.x, headProj.y, 16 + Math.sin(now * 0.01) * 3, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Read Head Label
+                ctx.fillStyle = '#67e8f9';
+                ctx.font = '10px "Fira Code", monospace';
+                ctx.fillText(`HEAD [${(state.loopAngle / Math.PI).toFixed(2)}π]`, headProj.x + 18, headProj.y + 4);
+                ctx.restore();
+
+                // --- 5. UPDATE UI STATUS INDICATORS ---
+                loopPosText.innerText = `${(state.loopAngle / Math.PI).toFixed(2)}π`;
+                
+                // Determine current local phase at head position
+                const currentPhase = state.loopAngle > Math.PI ? -1 : 1;
+                if (currentPhase === 1) {
+                    currentPhaseText.innerText = '+1 (POSITIVE PHASE)';
+                    currentPhaseText.className = 'text-emerald-400 font-bold';
+                    document.getElementById('nodePos').className = 'p-2 rounded bg-emerald-950 border border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-950/50';
+                    document.getElementById('nodeNeg').className = 'p-2 rounded bg-rose-950/30 border border-rose-900/30 text-rose-500/60';
+                } else {
+                    currentPhaseText.innerText = '-1 (INVERTED PHASE)';
+                    currentPhaseText.className = 'text-rose-400 font-bold';
+                    document.getElementById('nodeNeg').className = 'p-2 rounded bg-rose-950 border border-rose-500 text-rose-300 shadow-lg shadow-rose-950/50';
+                    document.getElementById('nodePos').className = 'p-2 rounded bg-emerald-950/30 border border-emerald-900/30 text-emerald-500/60';
+                }
+
+                // Metric indicators real-time updates
+                document.getElementById('metricPhaseFlip').innerText = `${(state.phaseFlips * state.traversalSpeed).toFixed(1)} Hz`;
+                document.getElementById('metricCycles').innerText = `${state.cycles.toLocaleString()} REV`;
+                document.getElementById('barCycles').style.width = `${(state.cycles % 100)}%`;
+            }
+
+            requestAnimationFrame(renderEngine);
+        }
+
+        // --- EVENT HANDLERS & INTERACTIVITY ---
+
+        // Play / Pause Toggle
+        btnPlayPause.addEventListener('click', () => {
+            state.isPlaying = !state.isPlaying;
+            if (state.isPlaying) {
+                video.play();
+                btnPlayPause.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> PAUSE ENGINE`;
+                btnPlayPause.className = 'px-4 py-2 bg-amber-950 hover:bg-amber-900 border border-amber-500/50 text-amber-300 rounded-lg flex items-center gap-2 text-xs font-bold tracking-wider transition-all active:scale-95';
+                logMessage('[ENGINE_RESUMED] Möbius traversal running.', 'text-cyan-400');
+            } else {
+                video.pause();
+                btnPlayPause.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> PLAY ENGINE`;
+                btnPlayPause.className = 'px-4 py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg flex items-center gap-2 text-xs font-bold tracking-wider transition-all active:scale-95';
+                logMessage('[ENGINE_PAUSED] Traversal halted at coordinate.', 'text-amber-400');
+            }
+            lucide.createIcons();
+        });
+
+        // Invert Vector (Reverse Playback)
+        btnReverse.addEventListener('click', () => {
+            state.direction *= -1;
+            const dirStr = state.direction === 1 ? 'FORWARD' : 'REVERSE';
+            vectorDisplay.innerText = `${dirStr} [${(state.traversalSpeed * state.direction).toFixed(1)}x]`;
+            logMessage(`[VECTOR_INVERT] Traversal direction flipped to ${dirStr}.`, 'text-purple-400');
+            
+            // Adjust video playback rate / reverse simulation
+            video.playbackRate = Math.abs(state.traversalSpeed);
+        });
+
+        // Trigger Topological Phase Shift
+        btnPhaseShift.addEventListener('click', () => {
+            state.loopAngle = (state.loopAngle + Math.PI) % (Math.PI * 2);
+            state.phaseFlips += 10;
+            logMessage('[MANUAL_TWIST] Forced 180° topological shift across Möbius boundary.', 'text-pink-400');
+        });
+
+        // Packet Injections (+1, 0, -1)
+        document.getElementById('btnInjectPos').addEventListener('click', () => {
+            shiftTritBuffer(1);
+            state.pulses.push({ u: state.loopAngle, phase: 1, speed: 0.008, life: 1 });
+            logMessage('[INJECT_TRIT] Positive trit (+1) injected into stream.', 'text-emerald-400');
+        });
+
+        document.getElementById('btnInjectZero').addEventListener('click', () => {
+            shiftTritBuffer(0);
+            state.pulses.push({ u: state.loopAngle, phase: 0, speed: 0.008, life: 1 });
+            logMessage('[INJECT_TRIT] Neutral invariant trit (0) injected.', 'text-gray-400');
+        });
+
+        document.getElementById('btnInjectNeg').addEventListener('click', () => {
+            shiftTritBuffer(-1);
+            state.pulses.push({ u: state.loopAngle, phase: -1, speed: 0.008, life: 1 });
+            logMessage('[INJECT_TRIT] Inverted trit (-1) injected into stream.', 'text-rose-400');
+        });
+
+        // Toggle HUD Visibility
+        toggleHUD.addEventListener('change', (e) => {
+            state.hudVisible = e.target.checked;
+            logMessage(`[HUD_OVERLAY] HUD Visibility set to ${state.hudVisible}`, 'text-cyan-400');
+        });
+
+        // Sliders Input Listeners
+        sliderSpeed.addEventListener('input', (e) => {
+            state.traversalSpeed = parseFloat(e.target.value);
+            document.getElementById('speedVal').innerText = `${state.traversalSpeed.toFixed(1)}x`;
+            const dirStr = state.direction === 1 ? 'FORWARD' : 'REVERSE';
+            vectorDisplay.innerText = `${dirStr} [${(state.traversalSpeed * state.direction).toFixed(1)}x]`;
+            video.playbackRate = state.traversalSpeed;
+        });
+
+        sliderSensitivity.addEventListener('input', (e) => {
+            state.sensitivity = parseFloat(e.target.value);
+            document.getElementById('sensitivityVal').innerText = state.sensitivity.toFixed(2);
+        });
+
+        sliderNoise.addEventListener('input', (e) => {
+            state.noiseThreshold = parseFloat(e.target.value);
+            document.getElementById('noiseVal').innerText = state.noiseThreshold.toFixed(2);
+        });
+
+        document.getElementById('btnClearLog').addEventListener('click', () => {
+            sysLog.innerHTML = '<p class="text-cyan-500/80">[SYS_CLEARED] Logs reset.</p>';
+        });
+
+        // Interactive Canvas Clicks (Perturb Möbius wave)
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Inject random trit pulse at click
+            const randomPhase = Math.random() > 0.5 ? 1 : -1;
+            state.pulses.push({
+                u: Math.random() * Math.PI * 2,
+                phase: randomPhase,
+                speed: 0.006 + Math.random() * 0.004,
+                life: 1.0
+            });
+            shiftTritBuffer(randomPhase);
+            logMessage(`[CANVAS_PERTURB] Wave perturbed at (${Math.round(x)}, ${Math.round(y)}).`, 'text-cyan-300');
+        });
+
+        // START ENGINE ON WINDOW LOAD
+        window.onload = function() {
+            updateTritDisplay();
+            // Start Canvas Animation Loop
+            requestAnimationFrame(renderEngine);
+            // Attempt autoplay video muted
+            video.play().catch(() => {
+                logMessage('[AUTOPLAY_MUTED] Video playback waiting for interaction.', 'text-yellow-400');
+            });
+        };
+    </script>
+</body>
+</html>
